@@ -1,5 +1,7 @@
 # 🍺 Beer Distribution Game
 
+**English** · [한국어](./README.ko.md)
+
 A modern web implementation of the classic **Beer Distribution Game**, originally developed by Jay Forrester at MIT Sloan in the 1960s to teach systems dynamics and supply chain management. This repository contains **two implementations** designed for different teaching contexts: a zero-install single-file version for quick demonstrations, and a full multi-team web application for classroom use.
 
 The game is designed to let students directly experience the **bullwhip effect** — the phenomenon where order signal variability amplifies as it propagates upstream through a supply chain, making the entire system inefficient.
