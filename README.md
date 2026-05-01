@@ -1,90 +1,141 @@
-# 🍺 Beer Distribution Game (맥주 분배 게임)
+# 🍺 Beer Distribution Game
 
-MIT Sloan에서 1960년대 Jay Forrester가 개발한 공급사슬 시뮬레이션 게임의 두 가지 구현체.
-공급사슬의 **채찍효과(Bullwhip Effect)** — 주문 신호가 상류로 갈수록 증폭되어 시스템 전체가 비효율적이 되는 현상 — 을 학생들이 직접 체험하면서 배울 수 있도록 만들었습니다.
+A modern web implementation of the classic **Beer Distribution Game**, originally developed by Jay Forrester at MIT Sloan in the 1960s to teach systems dynamics and supply chain management. This repository contains **two implementations** designed for different teaching contexts: a zero-install single-file version for quick demonstrations, and a full multi-team web application for classroom use.
 
-## 📂 이 저장소에 들어있는 것
+The game is designed to let students directly experience the **bullwhip effect** — the phenomenon where order signal variability amplifies as it propagates upstream through a supply chain, making the entire system inefficient.
 
-이 저장소에는 두 가지 버전이 들어 있습니다.
+---
 
-### 1️⃣ 단일 HTML 파일 — [`beer_game.html`](./beer_game.html)
+## 📂 What's in this repository
 
-브라우저에서 **더블클릭만** 하면 바로 실행되는 단일 파일 게임. 한 컴퓨터에서 4역할(소매상/도매상/유통업자/공장)을 한 사람이 모두 진행하거나, 일부 자리만 사람이 맡고 나머지를 AI에게 맡기는 방식입니다. 외부 의존성 없음, 설치 불필요.
+### 1️⃣ Single HTML file — [`beer_game.html`](./beer_game.html)
 
-빠른 데모, 개인 학습, 1대1 시연에 적합합니다.
+A zero-dependency game that runs by **double-clicking the file**. One person plays all four roles (Retailer / Wholesaler / Distributor / Factory), or has AI fill in any of them. No installation, no server, no build step.
 
-### 2️⃣ 웹 멀티팀 시스템 — [`beer-game-web/`](./beer-game-web/)
+**Best for:** quick demos, individual practice, one-on-one tutoring.
 
-여러 팀이 각자 다른 컴퓨터/스마트폰에서 동시에 진행하는 풀 스택 웹앱. 강사가 6자리 세션 코드를 발급하면 학생들이 각자 접속해 자기 팀의 자기 역할로 로그인합니다.
+### 2️⃣ Multi-team web app — [`beer-game-web/`](./beer-game-web/)
 
-- Node.js + Express + Socket.io (서버)
-- React + Vite + Tailwind + Chart.js (클라이언트)
-- 4가지 AI 정책, 10가지 수요 패턴, 5가지 시나리오 프리셋
-- 한국어/영어 지원
-- Docker 한 줄 배포 + Caddy 자동 HTTPS
+A full-stack web application where multiple teams play simultaneously, each player connecting from their own computer or smartphone. The instructor creates a session and shares a 6-character code; students join, pick their team and role, and play together in real time.
 
-수업/세미나/기업 워크숍에서 다수 팀이 동시 진행할 때 사용합니다.
+- **Server:** Node.js + Express + Socket.io + JSON / SQLite storage
+- **Client:** React + Vite + Tailwind + Chart.js
+- **4 AI policies**: Base-Stock, Naive, Conservative, Reactive
+- **10 demand patterns**: from MIT-classic step to pandemic spikes
+- **5 scenario presets**: Classic, Pandemic, Holiday, Stable, Chaos
+- **Korean / English** UI with browser-language auto-detection
+- **One-line Docker deployment** with optional Caddy auto-HTTPS
 
-자세한 사용법은 [`beer-game-web/README.md`](./beer-game-web/README.md) 참고.
+**Best for:** classroom sessions, seminars, corporate workshops with multiple concurrent teams.
 
-## 🚀 빠른 시작
+See [`beer-game-web/README.md`](./beer-game-web/README.md) for detailed usage.
 
-### 단일 HTML 게임을 바로 해보고 싶다면
+---
+
+## 🚀 Quick start
+
+### Try the single-file game
 
 ```
-beer_game.html 파일을 더블클릭
+Double-click beer_game.html
 ```
 
-### 웹 멀티팀 게임을 띄우고 싶다면
+That's it. Opens in your browser, runs entirely client-side.
+
+### Run the multi-team web app
+
+With Docker:
 
 ```bash
 cd beer-game-web
 docker compose up -d
 ```
 
-브라우저에서 `http://localhost:3001/` 접속.
+Then open `http://localhost:3001/` in your browser.
 
-Docker 없이 개발 모드로 띄우려면:
+Without Docker (development mode with hot reload):
 
 ```bash
-# 터미널 1
+# Terminal 1 — server
 cd beer-game-web/server && npm install && npm run dev
 
-# 터미널 2
+# Terminal 2 — client
 cd beer-game-web/client && npm install && npm run dev
 ```
 
-브라우저에서 `http://localhost:5173/` 접속.
+Then open `http://localhost:5173/`.
 
-## 📊 핵심 동학
+---
+
+## 🎯 How the game works
 
 ```
-고객 → [소매상] → [도매상] → [유통업자] → [공장]
-        ↑          ↑           ↑           ↑
-       주문        주문         주문         주문
-       2주 지연 + 2주 배송 지연 → 정보 신호가 4주 후 도착
+Customer → [Retailer] → [Wholesaler] → [Distributor] → [Factory]
+            ↑           ↑              ↑              ↑
+           orders flow upstream, with 2-week order delay + 2-week shipping delay
 ```
 
-각 단계는 자기 인접 단계만 볼 수 있고, 주문/배송에 지연이 있어 작은 수요 변동도 상류로 갈수록 크게 증폭됩니다. 학생들은 이 현상을 직접 겪으면서 ① 정보 공유의 중요성, ② 짧은 리드타임의 가치, ③ 일관된 주문 정책의 필요성을 배웁니다.
+Each tier sees only its immediate neighbours and must decide every week how much to order from upstream. With delays in the system and limited information, even small variations in customer demand get amplified into massive swings at the factory level. Students experience firsthand:
 
-## 📈 학습 결과 예시 (36주, 모두 AI base-stock 정책)
+- The cost of **information silos** between supply chain stages
+- How **lead time delays** destabilize system dynamics
+- The value of **consistent ordering policies** (e.g., base-stock)
+- Why real-world solutions like Walmart-P&G's VMI, Dell's build-to-order, and Zara's Quick Response exist
 
-| 단계 | 주문 표준편차 | 채찍효과 증폭 | 누적 비용 |
-|------|---------------|---------------|-----------|
-| 고객 수요 | 1.26 | 1.0배 (기준) | — |
-| 소매상 | 10.37 | **8.25배** | $449 |
-| 도매상 | 22.80 | **18.14배** | $2,269 |
-| 유통업자 | 47.18 | **37.53배** | $5,362 |
-| 공장 | 74.99 | **59.65배** | $5,770 |
+---
 
-원래 변동성 1.26이 공장에서 75.0으로 약 60배 증폭. 이게 채찍효과입니다.
+## 📈 Sample result (36 weeks, all-AI base-stock policy)
 
-## 🛠 설계 문서
+| Tier | Order std dev | Bullwhip amplification | Cumulative cost |
+|------|--------------|-----------------------|-----------------|
+| Customer demand | 1.26 | 1.00× (baseline) | — |
+| Retailer | 10.37 | **8.25×** | $449 |
+| Wholesaler | 22.80 | **18.14×** | $2,269 |
+| Distributor | 47.18 | **37.53×** | $5,362 |
+| Factory | 74.99 | **59.65×** | $5,770 |
 
-- [`PLAN.md`](./PLAN.md) — 웹 시스템 아키텍처, 6단계 로드맵, 데이터 모델, API 명세
+The original signal variability of 1.26 is amplified to ~75 at the factory — a **60× amplification**. This is the bullwhip effect made visible.
 
-## 📜 출처 / 라이선스
+---
 
-원본 게임은 1960년대 MIT Sloan에서 Jay Forrester가 시스템 다이내믹스 교육용으로 개발. 이 구현은 학습/교육 목적의 자체 구현이며 표준 MIT 클래식 룰을 따릅니다(4단계 공급사슬, 주문 지연 2주, 배송 지연 2주, 시작 재고 12, 재고 비용 $0.5/주, 백오더 비용 $1.0/주, 36주 진행).
+## 🛠 Architecture
 
-이 저장소는 비공개 개인 프로젝트입니다.
+The web app is a single Node.js process serving both the API and the built React client, with WebSocket real-time sync via Socket.io. Default storage is a JSON file (zero external dependencies); SQLite is available as an optional backend for larger deployments. Game state is fully managed server-side — clients only render — which prevents cheating and keeps state consistent across reconnects.
+
+For a deeper architectural overview, design rationale, and the original 6-phase development roadmap, see [`PLAN.md`](./PLAN.md).
+
+---
+
+## 🧪 Testing
+
+```bash
+cd beer-game-web/server
+npm test
+```
+
+32 unit and regression tests using Node's built-in test runner — no external test dependencies. Includes:
+- Game engine invariants (no negative inventory, monotonic costs, queue stability)
+- AI policy behavior across all 4 policies
+- All 10 demand patterns sanity-checked
+- Regression test against the standalone HTML version (identical output)
+- All 5 scenario presets play through to completion
+
+---
+
+## 🌍 Deployment
+
+For local classroom use on a single host, `docker compose up -d` is enough. For public-facing deployments with HTTPS and a custom domain:
+
+```bash
+DOMAIN=beer-game.example.com docker compose -f docker-compose.production.yml up -d
+```
+
+This brings up the app behind a Caddy reverse proxy with automatic Let's Encrypt SSL certificate provisioning and renewal. See [`beer-game-web/README.md`](./beer-game-web/README.md#https-외부-노출-caddy-자동-인증서) for details.
+
+---
+
+## 📜 Credits and license
+
+The original game was developed at MIT Sloan in the 1960s by Jay Forrester for teaching system dynamics. This implementation is an independent educational reimplementation that follows the standard MIT classic ruleset (4-tier supply chain, 2-week order delay, 2-week shipping delay, starting inventory 12, holding cost $0.5/unit/week, backlog cost $1.0/unit/week, 36-week duration by default — all configurable).
+
+This codebase is released for educational and research use. Feel free to fork, adapt, and use it in your own classes.
