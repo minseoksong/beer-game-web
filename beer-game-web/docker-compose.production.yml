@@ -1,0 +1,55 @@
+# 프로덕션 (외부 노출용) — Caddy 리버스 프록시 + 자동 HTTPS.
+#
+# 사전 준비:
+#   1. 서버에 Docker + docker compose 설치
+#   2. DNS A/AAAA 레코드: <도메인> → 서버 IP
+#   3. 80, 443 포트가 외부에 열려 있어야 함 (Let's Encrypt HTTP-01 챌린지)
+#
+# 실행:
+#   DOMAIN=beer-game.example.com docker compose -f docker-compose.production.yml up -d
+#
+# 인증서는 Caddy가 첫 접속에 자동 발급 + 자동 갱신.
+
+services:
+  beer-game:
+    build: .
+    image: beer-game:latest
+    container_name: beer-game
+    restart: unless-stopped
+    expose:
+      - "3001"
+    volumes:
+      - ./data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/data/data.json
+      - LOG_LEVEL=info
+    networks:
+      - beer-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: beer-game-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    depends_on:
+      - beer-game
+    networks:
+      - beer-net
+
+networks:
+  beer-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

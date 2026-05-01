@@ -1,0 +1,20 @@
+# 한 줄 실행: `docker compose up -d`
+# 브라우저에서 http://localhost:3001 또는 호스트 IP로 접속.
+
+services:
+  beer-game:
+    build: .
+    image: beer-game:latest
+    container_name: beer-game
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # 게임 데이터 영속화 — 컨테이너 재시작해도 세션 기록 유지.
+      # 로컬 사용 시: ./data 디렉토리에 data.json 저장됨.
+      - ./data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/data/data.json
+      - LOG_LEVEL=info

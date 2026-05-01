@@ -1,0 +1,32 @@
+# Caddy 리버스 프록시 — HTTPS 자동 발급(Let's Encrypt) + WebSocket 프록시.
+# 사용법: docker-compose.production.yml과 같이 실행.
+#
+# 1. DNS A 레코드: <도메인> → 서버 IP
+# 2. 환경변수: DOMAIN=beer-game.example.com docker compose -f docker-compose.production.yml up -d
+# 3. Caddy가 첫 접속 때 자동으로 SSL 인증서 발급/갱신.
+
+{$DOMAIN} {
+	# 모든 트래픽을 게임 서버(beer-game:3001)로 프록시
+	# Socket.io는 자동 처리됨 — Caddy v2가 WebSocket Upgrade 헤더 인식
+	reverse_proxy beer-game:3001
+
+	# 로그
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+
+	# 보안 헤더
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# CSP — 단일 origin이라 self만 허용
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss:; img-src 'self' data:;"
+	}
+
+	# 정적 파일 압축
+	encode gzip zstd
+}

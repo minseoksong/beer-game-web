@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>맥주 분배 게임 (Beer Distribution Game) — MIT</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2332;
+    --panel-2: #232f44;
+    --accent: #f4a261;
+    --accent-2: #e76f51;
+    --text: #e7eaee;
+    --muted: #8a96a8;
+    --good: #2a9d8f;
+    --warn: #e9c46a;
+    --bad: #e76f51;
+    --border: #2c3a52;
+    --retailer: #e76f51;
+    --wholesaler: #f4a261;
+    --distributor: #e9c46a;
+    --factory: #2a9d8f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    line-height: 1.5;
+  }
+  .container { max-width: 1300px; margin: 0 auto; padding: 24px; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  h2 { margin: 0 0 12px; font-size: 20px; color: var(--accent); }
+  h3 { margin: 0 0 8px; font-size: 16px; color: var(--accent); }
+  p { margin: 0 0 12px; color: var(--muted); }
+  .subtitle { color: var(--muted); margin-bottom: 20px; }
+  button {
+    background: var(--accent);
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+  }
+  button:hover { opacity: 0.9; }
+  button:active { transform: translateY(1px); }
+  button.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  input[type="number"], select {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    width: 100%;
+  }
+  label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 13px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-setup { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 20px; }
+  .role-card {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .role-card.retailer { border-top: 4px solid var(--retailer); }
+  .role-card.wholesaler { border-top: 4px solid var(--wholesaler); }
+  .role-card.distributor { border-top: 4px solid var(--distributor); }
+  .role-card.factory { border-top: 4px solid var(--factory); }
+  .role-card.active { background: var(--panel-2); }
+  .role-name { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .role-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+  .tag-human { background: var(--good); color: white; }
+  .tag-ai { background: var(--muted); color: white; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0; }
+  .stat {
+    background: rgba(0,0,0,0.2);
+    padding: 8px 10px;
+    border-radius: 6px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-value.bad { color: var(--bad); }
+  .stat-value.good { color: var(--good); }
+  .order-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .order-input input { flex: 1; }
+  .pipe-display {
+    background: rgba(0,0,0,0.25);
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-top: 8px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 13px;
+  }
+  .pipe-arrow { color: var(--accent); margin: 0 6px; }
+  .center { text-align: center; }
+  .progress {
+    height: 8px;
+    background: var(--panel-2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0 16px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.3s;
+  }
+  .week-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .week-num { font-size: 24px; font-weight: 800; color: var(--accent); }
+  .demand-info {
+    background: var(--panel-2);
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .hidden { display: none !important; }
+  .status-msg {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .status-info { background: rgba(42, 157, 143, 0.15); border-left: 3px solid var(--good); }
+  .status-warn { background: rgba(233, 196, 106, 0.15); border-left: 3px solid var(--warn); }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    height: 300px;
+  }
+  .tutorial-step {
+    border-left: 3px solid var(--accent);
+    padding: 8px 14px;
+    margin: 12px 0;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .winner { color: var(--good); font-weight: 700; }
+  .footer-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal {
+    background: var(--panel); border-radius: 16px; padding: 32px;
+    max-width: 600px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+  }
+  details summary { cursor: pointer; padding: 8px; color: var(--accent); }
+  details summary:hover { background: var(--panel-2); border-radius: 6px; }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 20px;
+    font-size: 12px; background: var(--panel-2); margin-right: 4px;
+  }
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    text-align: center;
+    min-width: 100px;
+  }
+  .flow-arrow { color: var(--accent); font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- ========== 설정 화면 ========== -->
+<div id="screen-setup">
+  <h1>🍺 맥주 분배 게임 <span style="font-size:14px;color:var(--muted);font-weight:400;">— MIT Beer Distribution Game</span></h1>
+  <p class="subtitle">공급사슬의 채찍효과(Bullwhip Effect)를 체험하는 시뮬레이션 게임</p>
+
+  <div class="card">
+    <h2>게임 소개</h2>
+    <p style="color:var(--text)">MIT Sloan에서 1960년대 Jay Forrester가 개발한 시뮬레이션 게임입니다. 4개의 공급사슬 단계가 협력해야 하지만, 각자 자기 인접 단계만 볼 수 있어 정보 비대칭으로 인한 <strong style="color:var(--accent)">채찍효과</strong>(주문량 변동이 상류로 갈수록 증폭)를 경험하게 됩니다.</p>
+    <div class="flow-diagram">
+      <div class="flow-node" style="border-color:var(--retailer)">고객</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="border-color:var(--retailer)">소매상<br><small style="color:var(--muted)">Retailer</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="border-color:var(--wholesaler)">도매상<br><small style="color:var(--muted)">Wholesaler</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="border-color:var(--distributor)">유통업자<br><small style="color:var(--muted)">Distributor</small></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node" style="border-color:var(--factory)">공장<br><small style="color:var(--muted)">Factory</small></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>플레이어 설정</h2>
+    <p>각 역할을 사람이 맡을지, AI가 맡을지 선택하세요. 1~4명이 한 컴퓨터에서 같이 플레이할 수 있습니다.</p>
+    <div class="grid-4" id="role-setup">
+      <!-- 각 역할별 사람/AI 토글 -->
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>게임 규칙 (커스터마이징)</h2>
+    <div class="grid-setup">
+      <div>
+        <label>전체 라운드 수 (주)</label>
+        <input type="number" id="opt-weeks" value="36" min="10" max="100">
+      </div>
+      <div>
+        <label>주문 지연 (주)</label>
+        <input type="number" id="opt-order-delay" value="2" min="0" max="5">
+      </div>
+      <div>
+        <label>배송 지연 (주)</label>
+        <input type="number" id="opt-ship-delay" value="2" min="0" max="5">
+      </div>
+      <div>
+        <label>시작 재고 (단위)</label>
+        <input type="number" id="opt-start-inv" value="12" min="0" max="50">
+      </div>
+      <div>
+        <label>재고 보유비용 ($/단위/주)</label>
+        <input type="number" id="opt-hold-cost" value="0.5" step="0.1" min="0">
+      </div>
+      <div>
+        <label>백오더 비용 ($/단위/주)</label>
+        <input type="number" id="opt-back-cost" value="1.0" step="0.1" min="0">
+      </div>
+      <div>
+        <label>고객 수요 패턴</label>
+        <select id="opt-demand">
+          <option value="step">계단형 (4 → 8, MIT 클래식)</option>
+          <option value="constant">일정 (계속 4)</option>
+          <option value="random">랜덤 (3~7)</option>
+          <option value="growing">증가형 (3→12)</option>
+          <option value="seasonal">계절형 (사인파)</option>
+        </select>
+      </div>
+      <div>
+        <label>정보 격리 모드</label>
+        <select id="opt-info">
+          <option value="full">완전 (인접 단계만 보임 — MIT 정통)</option>
+          <option value="partial">부분 (자기 단계만 보임)</option>
+          <option value="open">개방 (모든 정보 공개)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>게임 진행 방식 (각 주차)</h2>
+    <div class="tutorial-step"><strong>1단계 — 입고 수령:</strong> 이전에 보내진 배송이 도착해 재고에 추가됩니다.</div>
+    <div class="tutorial-step"><strong>2단계 — 주문 수령:</strong> 하류 단계로부터 새로운 주문을 받습니다. (소매상은 고객 수요)</div>
+    <div class="tutorial-step"><strong>3단계 — 출하:</strong> 재고가 충분하면 모두 출하, 부족하면 백오더가 쌓입니다.</div>
+    <div class="tutorial-step"><strong>4단계 — 비용 계산:</strong> 재고비용 + 백오더비용이 누적됩니다.</div>
+    <div class="tutorial-step"><strong>5단계 — 주문 결정:</strong> <span style="color:var(--accent)">당신의 결정!</span> 상류에 얼마를 주문할지 정합니다.</div>
+    <p style="margin-top:14px;color:var(--text)">⚠️ <strong>총 비용을 최소화</strong>하는 것이 목표입니다. 4명 합산 비용이 점수가 됩니다.</p>
+  </div>
+
+  <div class="footer-actions">
+    <button onclick="startGame()" style="padding:14px 32px;font-size:17px">게임 시작 →</button>
+  </div>
+</div>
+
+<!-- ========== 게임 화면 ========== -->
+<div id="screen-game" class="hidden">
+  <div class="card" style="margin-bottom:12px">
+    <div class="week-banner">
+      <div>
+        <h1 style="margin:0">🍺 맥주 분배 게임</h1>
+        <span style="color:var(--muted);font-size:14px">총 비용 합산: <strong id="total-cost-display" style="color:var(--accent)">$0</strong></span>
+      </div>
+      <div style="text-align:right">
+        <div style="color:var(--muted);font-size:13px">현재 주차</div>
+        <div class="week-num"><span id="current-week">1</span> / <span id="total-weeks">36</span></div>
+      </div>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    <div class="demand-info" id="demand-info">이번 주 고객 수요: <strong>4 단위</strong></div>
+  </div>
+
+  <div class="grid-4" id="game-roles">
+    <!-- 4 역할 카드가 동적으로 생성됨 -->
+  </div>
+
+  <div class="footer-actions">
+    <button onclick="advanceWeek()" id="next-week-btn" style="padding:14px 32px;font-size:17px">이번 주 진행 →</button>
+    <button onclick="quitGame()" class="secondary">중단하기</button>
+  </div>
+
+  <details class="card" style="margin-top:16px">
+    <summary><strong>📊 실시간 차트 보기</strong> (채찍효과 확인)</summary>
+    <div class="charts-grid" style="margin-top:12px">
+      <div class="chart-wrap"><canvas id="chart-orders"></canvas></div>
+      <div class="chart-wrap"><canvas id="chart-inventory"></canvas></div>
+      <div class="chart-wrap"><canvas id="chart-backlog"></canvas></div>
+      <div class="chart-wrap"><canvas id="chart-cost"></canvas></div>
+    </div>
+  </details>
+</div>
+
+<!-- ========== 결과 화면 ========== -->
+<div id="screen-results" class="hidden">
+  <div class="card">
+    <h1>🏁 게임 종료!</h1>
+    <p>각 역할의 성과와 채찍효과를 분석해 보세요.</p>
+
+    <h2 style="margin-top:24px">최종 점수판</h2>
+    <table id="results-table">
+      <thead>
+        <tr><th>역할</th><th>플레이어</th><th>총 비용</th><th>최대 재고</th><th>최대 백오더</th><th>주문 변동성*</th></tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr style="border-top:2px solid var(--accent)"><th colspan="2">총합</th><th id="total-cost-final"></th><th colspan="3"></th></tr>
+      </tfoot>
+    </table>
+    <p style="font-size:12px;margin-top:8px">* 주문 변동성 = 표준편차 (낮을수록 안정적)</p>
+  </div>
+
+  <div class="card">
+    <h2>📈 시각화 — 채찍효과</h2>
+    <div class="charts-grid">
+      <div class="chart-wrap"><canvas id="result-orders"></canvas></div>
+      <div class="chart-wrap"><canvas id="result-inventory"></canvas></div>
+      <div class="chart-wrap"><canvas id="result-backlog"></canvas></div>
+      <div class="chart-wrap"><canvas id="result-cost"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💡 학습 포인트</h2>
+    <div id="lessons"></div>
+  </div>
+
+  <div class="footer-actions">
+    <button onclick="resetGame()">다시 시작</button>
+    <button onclick="exportData()" class="secondary">데이터 내보내기 (CSV)</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// 게임 상태 (Game State)
+// ============================================================
+const ROLES = [
+  { id: 'retailer',    name: '소매상',     en: 'Retailer',    color: '#e76f51' },
+  { id: 'wholesaler',  name: '도매상',     en: 'Wholesaler',  color: '#f4a261' },
+  { id: 'distributor', name: '유통업자',   en: 'Distributor', color: '#e9c46a' },
+  { id: 'factory',     name: '공장',       en: 'Factory',     color: '#2a9d8f' }
+];
+
+let config = {};
+let state = {};
+let charts = {};
+let resultCharts = {};
+
+// ============================================================
+// 초기화
+// ============================================================
+function initSetup() {
+  const setup = document.getElementById('role-setup');
+  setup.innerHTML = ROLES.map((r, i) => `
+    <div class="role-card ${r.id}">
+      <div class="role-name">${r.name}<br><small style="color:var(--muted);font-weight:400">${r.en}</small></div>
+      <label>플레이어 유형</label>
+      <select id="player-${r.id}">
+        <option value="human" ${i === 0 ? 'selected' : ''}>사람</option>
+        <option value="ai" ${i !== 0 ? 'selected' : ''}>AI (Base-Stock 정책)</option>
+      </select>
+      <label style="margin-top:8px">이름 (선택)</label>
+      <input type="text" id="name-${r.id}" placeholder="${r.name} 플레이어" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:8px;border-radius:6px;width:100%">
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// 게임 시작
+// ============================================================
+function startGame() {
+  config = {
+    weeks:       parseInt(document.getElementById('opt-weeks').value),
+    orderDelay:  parseInt(document.getElementById('opt-order-delay').value),
+    shipDelay:   parseInt(document.getElementById('opt-ship-delay').value),
+    startInv:    parseInt(document.getElementById('opt-start-inv').value),
+    holdCost:    parseFloat(document.getElementById('opt-hold-cost').value),
+    backCost:    parseFloat(document.getElementById('opt-back-cost').value),
+    demand:      document.getElementById('opt-demand').value,
+    info:        document.getElementById('opt-info').value,
+    players:     {}
+  };
+  ROLES.forEach(r => {
+    config.players[r.id] = {
+      type: document.getElementById(`player-${r.id}`).value,
+      name: document.getElementById(`name-${r.id}`).value || r.name
+    };
+  });
+
+  // 상태 초기화
+  state = {
+    week: 1,
+    customerDemandHistory: [],
+    roles: {},
+    history: [] // 매 주 스냅샷
+  };
+
+  ROLES.forEach((r, i) => {
+    state.roles[r.id] = {
+      inventory: config.startInv,
+      backlog: 0,
+      totalCost: 0,
+      // 큐: 들어오는 배송 (timeline)
+      incomingShipments: Array(config.shipDelay).fill(4),
+      // 큐: 하류로부터 들어오는 주문 (이미 주문이 흐르고 있음)
+      incomingOrders: Array(config.orderDelay).fill(4),
+      // 공장은 자기 자신에게 주문 (생산)
+      // 기록
+      orderHistory: [],
+      inventoryHistory: [],
+      backlogHistory: [],
+      costHistory: [],
+      shipmentHistory: [],
+      pendingOrder: null // 이번 주 결정한 주문량
+    };
+  });
+
+  // 화면 전환
+  document.getElementById('screen-setup').classList.add('hidden');
+  document.getElementById('screen-game').classList.remove('hidden');
+  document.getElementById('total-weeks').textContent = config.weeks;
+  initCharts();
+  renderGame();
+}
+
+// ============================================================
+// 고객 수요 계산
+// ============================================================
+function getCustomerDemand(week) {
+  switch (config.demand) {
+    case 'step':
+      return week <= 4 ? 4 : 8;
+    case 'constant':
+      return 4;
+    case 'random': {
+      // 시드 기반 의사난수 (재현 가능하게 안 했지만 단순 랜덤)
+      return Math.floor(Math.random() * 5) + 3;
+    }
+    case 'growing':
+      return Math.min(12, 3 + Math.floor((week - 1) / 3));
+    case 'seasonal': {
+      const base = 6;
+      const amp = 3;
+      return Math.max(0, Math.round(base + amp * Math.sin((week / 8) * Math.PI)));
+    }
+    default: return 4;
+  }
+}
+
+// ============================================================
+// AI 의사결정 (Base-Stock + smoothing)
+// ============================================================
+function aiDecide(roleId) {
+  const r = state.roles[roleId];
+  // 간단한 base-stock 정책:
+  // target = 평균 수요 * (lead time + 1) + 안전재고
+  // order = max(0, target - (inventory - backlog) - on-order)
+  const recentOrders = r.orderHistory.slice(-4);
+  const recentDemand = roleId === 'retailer'
+    ? state.customerDemandHistory.slice(-4)
+    : state.roles[downstreamOf(roleId)].orderHistory.slice(-4);
+  const avgDemand = recentDemand.length > 0
+    ? recentDemand.reduce((a,b) => a+b, 0) / recentDemand.length
+    : 4;
+  const leadTime = config.orderDelay + config.shipDelay;
+  const target = avgDemand * (leadTime + 2) + 4; // 안전재고 4
+  const onOrder = (r.incomingShipments || []).reduce((a,b) => a+b, 0);
+  const netInv = r.inventory - r.backlog;
+  const order = Math.max(0, Math.round(target - netInv - onOrder));
+  return order;
+}
+
+function downstreamOf(roleId) {
+  const idx = ROLES.findIndex(r => r.id === roleId);
+  if (idx === 0) return null; // 소매상은 고객
+  return ROLES[idx - 1].id;
+}
+
+function upstreamOf(roleId) {
+  const idx = ROLES.findIndex(r => r.id === roleId);
+  if (idx === ROLES.length - 1) return null; // 공장은 자기 자신
+  return ROLES[idx + 1].id;
+}
+
+// ============================================================
+// 렌더링: 게임 화면
+// ============================================================
+function renderGame() {
+  document.getElementById('current-week').textContent = state.week;
+  document.getElementById('progress-bar').style.width = ((state.week - 1) / config.weeks * 100) + '%';
+
+  const totalCost = ROLES.reduce((s, r) => s + state.roles[r.id].totalCost, 0);
+  document.getElementById('total-cost-display').textContent = '$' + totalCost.toFixed(2);
+
+  // 이번 주 고객 수요 (소매상에게 들어올 주문)
+  const customerDemand = getCustomerDemand(state.week);
+  let demandInfoText = `이번 주 고객 수요: <strong>${customerDemand} 단위</strong>`;
+  if (config.info === 'full' || config.info === 'open') {
+    // 정보 표시 - 다른 단계에서도 자기 하류 주문 보임
+  }
+  document.getElementById('demand-info').innerHTML = demandInfoText;
+
+  const container = document.getElementById('game-roles');
+  container.innerHTML = ROLES.map(r => renderRoleCard(r, customerDemand)).join('');
+
+  // 입력 칸 포커스
+  const firstHumanInput = document.querySelector('.order-input input:not([disabled])');
+  if (firstHumanInput) firstHumanInput.focus();
+}
+
+function renderRoleCard(role, customerDemand) {
+  const r = state.roles[role.id];
+  const player = config.players[role.id];
+  const isHuman = player.type === 'human';
+  const incomingShipment = r.incomingShipments[0] || 0;
+  // 소매상의 들어오는 주문 = 고객 수요. 그 외는 큐의 첫 번째.
+  const incomingOrder = role.id === 'retailer' ? customerDemand : (r.incomingOrders[0] || 0);
+
+  const showInfo = config.info === 'open' || (config.info === 'full');
+  const showAdjacent = config.info !== 'partial';
+
+  // 이전 의사결정 표시
+  const lastOrder = r.orderHistory.length > 0 ? r.orderHistory[r.orderHistory.length - 1] : '-';
+  const prevWeekShipment = r.shipmentHistory.length > 0 ? r.shipmentHistory[r.shipmentHistory.length - 1] : '-';
+
+  return `
+    <div class="role-card ${role.id}">
+      <div class="role-name" style="color:${role.color}">
+        ${role.name}
+        <span class="role-tag ${isHuman ? 'tag-human' : 'tag-ai'}">${isHuman ? player.name : 'AI'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
+        ${role.id === 'retailer' ? '고객' : ROLES[ROLES.findIndex(x=>x.id===role.id)-1].name} ←${role.name}
+        ${role.id === 'factory' ? '(자체생산)' : `→ ${ROLES[ROLES.findIndex(x=>x.id===role.id)+1].name}`}
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">현재 재고</div>
+          <div class="stat-value ${r.inventory > 20 ? 'bad' : r.inventory > 0 ? 'good' : ''}">${r.inventory}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">백오더</div>
+          <div class="stat-value ${r.backlog > 0 ? 'bad' : 'good'}">${r.backlog}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">이번 주 입고 도착</div>
+          <div class="stat-value">${incomingShipment}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">${role.id === 'retailer' ? '고객 주문' : '하류 주문'}</div>
+          <div class="stat-value">${incomingOrder}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">누적 비용</div>
+          <div class="stat-value">$${r.totalCost.toFixed(2)}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">지난 주 주문</div>
+          <div class="stat-value">${lastOrder}</div>
+        </div>
+      </div>
+
+      <div class="pipe-display">
+        📦 배송 파이프라인 (앞→뒤): ${r.incomingShipments.join(' <span class="pipe-arrow">→</span> ') || '비어있음'}
+      </div>
+      ${role.id !== 'retailer' ? `
+      <div class="pipe-display">
+        📋 주문 파이프라인: ${r.incomingOrders.join(' <span class="pipe-arrow">→</span> ') || '비어있음'}
+      </div>` : ''}
+
+      <div class="order-input">
+        <label style="margin:0;flex:0 0 auto">${role.id === 'factory' ? '생산 주문' : '상류 주문'}:</label>
+        <input type="number" id="order-${role.id}" min="0" max="999"
+               value="${isHuman ? '' : aiDecide(role.id)}"
+               ${isHuman ? '' : 'disabled'}
+               placeholder="단위 수">
+        <span style="font-size:13px;color:var(--muted)">단위</span>
+      </div>
+      ${!isHuman ? '<div style="font-size:11px;color:var(--muted);margin-top:4px;text-align:center">AI가 자동 결정</div>' : ''}
+    </div>
+  `;
+}
+
+// ============================================================
+// 한 주 진행 (모든 역할의 결정을 받아 시뮬레이션)
+// ============================================================
+function advanceWeek() {
+  // 각 역할의 주문량 수집
+  const orders = {};
+  for (const role of ROLES) {
+    const player = config.players[role.id];
+    if (player.type === 'human') {
+      const input = document.getElementById('order-' + role.id);
+      const val = parseInt(input.value);
+      if (isNaN(val) || val < 0) {
+        alert(`${role.name}의 주문량을 입력해주세요 (0 이상의 정수).`);
+        input.focus();
+        return;
+      }
+      orders[role.id] = val;
+    } else {
+      orders[role.id] = aiDecide(role.id);
+    }
+  }
+
+  // 시뮬레이션 진행
+  simulateWeek(orders);
+
+  // 종료 조건
+  if (state.week > config.weeks) {
+    showResults();
+  } else {
+    renderGame();
+    updateCharts();
+  }
+}
+
+function simulateWeek(orders) {
+  const customerDemand = getCustomerDemand(state.week);
+  state.customerDemandHistory.push(customerDemand);
+
+  // 처리 순서 (각 역할별로):
+  // 1. 입고 받기 (incomingShipments 첫 항목)
+  // 2. 주문 받기 (incomingOrders 첫 항목, 소매상은 고객 수요)
+  // 3. 출하 (재고 + 백오더)
+  // 4. 비용 계산
+  // 5. 새 주문을 상류 큐에 넣음
+  // 6. 큐 시프트
+
+  for (const role of ROLES) {
+    const r = state.roles[role.id];
+
+    // 1. 입고
+    const arriving = r.incomingShipments.shift() || 0;
+    r.inventory += arriving;
+
+    // 2. 주문 받기
+    const incomingDemand = role.id === 'retailer'
+      ? customerDemand
+      : (r.incomingOrders.shift() || 0);
+    if (role.id !== 'retailer') {
+      // 큐는 이미 shift됐음
+    } else {
+      // 소매상은 incomingOrders 큐 안 씀
+    }
+    const totalDemand = r.backlog + incomingDemand;
+
+    // 3. 출하 (하류로 보냄, 또는 고객에게)
+    const shipped = Math.min(r.inventory, totalDemand);
+    r.inventory -= shipped;
+    r.backlog = totalDemand - shipped;
+    r.shipmentHistory.push(shipped);
+
+    // 출하분을 하류의 incomingShipments에 추가 (배송 지연 후 도착)
+    const downstream = downstreamOf(role.id);
+    if (downstream) {
+      // 큐 길이를 shipDelay로 유지: 마지막에 추가
+      // 큐에서 shift 했고, 새로 들어오는 출하를 마지막에 push해서 shipDelay 단위 지연
+      while (state.roles[downstream].incomingShipments.length < config.shipDelay - 1) {
+        state.roles[downstream].incomingShipments.push(0);
+      }
+      state.roles[downstream].incomingShipments.push(shipped);
+    }
+    // 소매상은 고객에게 출하 — 큐 없음
+
+    // 4. 비용
+    const weekCost = r.inventory * config.holdCost + r.backlog * config.backCost;
+    r.totalCost += weekCost;
+
+    // 기록
+    r.inventoryHistory.push(r.inventory);
+    r.backlogHistory.push(r.backlog);
+    r.costHistory.push(r.totalCost);
+
+    // 5. 새 주문 (상류로)
+    const myOrder = orders[role.id];
+    r.orderHistory.push(myOrder);
+
+    const upstream = upstreamOf(role.id);
+    if (upstream) {
+      // 상류의 incomingOrders 큐에 추가
+      while (state.roles[upstream].incomingOrders.length < config.orderDelay - 1) {
+        state.roles[upstream].incomingOrders.push(0);
+      }
+      state.roles[upstream].incomingOrders.push(myOrder);
+    } else {
+      // 공장: 자기 자신에게 주문 (생산) → 자기 incomingShipments에 production delay 후 추가
+      // 단순화: 공장 주문은 shipDelay 후 자기 재고에 도착
+      while (r.incomingShipments.length < config.shipDelay - 1) {
+        r.incomingShipments.push(0);
+      }
+      r.incomingShipments.push(myOrder);
+    }
+
+    // 큐 길이 유지 (필요하면 0으로 채움)
+    while (r.incomingShipments.length < config.shipDelay) r.incomingShipments.push(0);
+    if (role.id !== 'retailer') {
+      while (r.incomingOrders.length < config.orderDelay) r.incomingOrders.push(0);
+    }
+  }
+
+  // 스냅샷 저장
+  state.history.push({
+    week: state.week,
+    customerDemand,
+    roles: ROLES.reduce((acc, role) => {
+      const r = state.roles[role.id];
+      acc[role.id] = {
+        inventory: r.inventory,
+        backlog: r.backlog,
+        totalCost: r.totalCost,
+        order: r.orderHistory[r.orderHistory.length - 1],
+        shipped: r.shipmentHistory[r.shipmentHistory.length - 1]
+      };
+      return acc;
+    }, {})
+  });
+
+  state.week += 1;
+}
+
+// ============================================================
+// 차트
+// ============================================================
+function chartConfig(label) {
+  return {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: ROLES.map(r => ({
+        label: r.name,
+        data: [],
+        borderColor: r.color,
+        backgroundColor: r.color + '33',
+        tension: 0.2,
+        borderWidth: 2,
+        pointRadius: 2
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: true, text: label, color: '#e7eaee', font: { size: 14, weight: 'bold' } },
+        legend: { labels: { color: '#e7eaee', font: { size: 11 } } }
+      },
+      scales: {
+        x: { ticks: { color: '#8a96a8' }, grid: { color: '#2c3a52' }, title: { display: true, text: '주', color: '#8a96a8' } },
+        y: { ticks: { color: '#8a96a8' }, grid: { color: '#2c3a52' } }
+      }
+    }
+  };
+}
+
+function initCharts() {
+  // 게임 화면 차트
+  if (charts.orders) Object.values(charts).forEach(c => c.destroy());
+  charts.orders = new Chart(document.getElementById('chart-orders'), chartConfig('주문량 (채찍효과)'));
+  charts.inventory = new Chart(document.getElementById('chart-inventory'), chartConfig('재고'));
+  charts.backlog = new Chart(document.getElementById('chart-backlog'), chartConfig('백오더'));
+  charts.cost = new Chart(document.getElementById('chart-cost'), chartConfig('누적 비용 ($)'));
+}
+
+function updateCharts() {
+  const weeks = state.history.map(h => h.week);
+  charts.orders.data.labels = weeks;
+  charts.inventory.data.labels = weeks;
+  charts.backlog.data.labels = weeks;
+  charts.cost.data.labels = weeks;
+  ROLES.forEach((role, i) => {
+    charts.orders.data.datasets[i].data = state.history.map(h => h.roles[role.id].order);
+    charts.inventory.data.datasets[i].data = state.history.map(h => h.roles[role.id].inventory);
+    charts.backlog.data.datasets[i].data = state.history.map(h => h.roles[role.id].backlog);
+    charts.cost.data.datasets[i].data = state.history.map(h => h.roles[role.id].totalCost);
+  });
+  // 고객 수요도 주문 차트에 추가
+  if (charts.orders.data.datasets.length === ROLES.length) {
+    charts.orders.data.datasets.push({
+      label: '고객 수요',
+      data: state.history.map(h => h.customerDemand),
+      borderColor: '#ffffff',
+      borderDash: [4, 4],
+      borderWidth: 2,
+      pointRadius: 1
+    });
+  } else {
+    charts.orders.data.datasets[ROLES.length].data = state.history.map(h => h.customerDemand);
+  }
+  Object.values(charts).forEach(c => c.update('none'));
+}
+
+// ============================================================
+// 결과 화면
+// ============================================================
+function showResults() {
+  document.getElementById('screen-game').classList.add('hidden');
+  document.getElementById('screen-results').classList.remove('hidden');
+
+  // 점수 계산
+  const tbody = document.querySelector('#results-table tbody');
+  tbody.innerHTML = ROLES.map(role => {
+    const r = state.roles[role.id];
+    const player = config.players[role.id];
+    const orders = r.orderHistory;
+    const variability = stddev(orders).toFixed(2);
+    const maxInv = Math.max(...r.inventoryHistory);
+    const maxBack = Math.max(...r.backlogHistory);
+    return `<tr>
+      <td><strong style="color:${role.color}">${role.name}</strong></td>
+      <td>${player.type === 'human' ? player.name : 'AI'}</td>
+      <td><strong>$${r.totalCost.toFixed(2)}</strong></td>
+      <td>${maxInv}</td>
+      <td>${maxBack}</td>
+      <td>${variability}</td>
+    </tr>`;
+  }).join('');
+  const totalCost = ROLES.reduce((s, r) => s + state.roles[r.id].totalCost, 0);
+  document.getElementById('total-cost-final').textContent = '$' + totalCost.toFixed(2);
+
+  // 결과 차트
+  if (resultCharts.orders) Object.values(resultCharts).forEach(c => c.destroy());
+  resultCharts.orders = new Chart(document.getElementById('result-orders'), chartConfig('주문량 (채찍효과)'));
+  resultCharts.inventory = new Chart(document.getElementById('result-inventory'), chartConfig('재고 변화'));
+  resultCharts.backlog = new Chart(document.getElementById('result-backlog'), chartConfig('백오더'));
+  resultCharts.cost = new Chart(document.getElementById('result-cost'), chartConfig('누적 비용 ($)'));
+
+  const weeks = state.history.map(h => h.week);
+  ROLES.forEach((role, i) => {
+    resultCharts.orders.data.labels = weeks;
+    resultCharts.inventory.data.labels = weeks;
+    resultCharts.backlog.data.labels = weeks;
+    resultCharts.cost.data.labels = weeks;
+    resultCharts.orders.data.datasets[i].data = state.history.map(h => h.roles[role.id].order);
+    resultCharts.inventory.data.datasets[i].data = state.history.map(h => h.roles[role.id].inventory);
+    resultCharts.backlog.data.datasets[i].data = state.history.map(h => h.roles[role.id].backlog);
+    resultCharts.cost.data.datasets[i].data = state.history.map(h => h.roles[role.id].totalCost);
+  });
+  resultCharts.orders.data.datasets.push({
+    label: '고객 수요',
+    data: state.history.map(h => h.customerDemand),
+    borderColor: '#ffffff',
+    borderDash: [4, 4],
+    borderWidth: 2,
+    pointRadius: 1
+  });
+  Object.values(resultCharts).forEach(c => c.update());
+
+  // 학습 포인트 생성
+  generateLessons();
+}
+
+function stddev(arr) {
+  if (arr.length === 0) return 0;
+  const mean = arr.reduce((a,b) => a+b, 0) / arr.length;
+  const variance = arr.reduce((s, x) => s + (x - mean) ** 2, 0) / arr.length;
+  return Math.sqrt(variance);
+}
+
+function generateLessons() {
+  const customerStd = stddev(state.customerDemandHistory);
+  const lessons = document.getElementById('lessons');
+  const stds = ROLES.map(role => ({
+    name: role.name,
+    color: role.color,
+    std: stddev(state.roles[role.id].orderHistory)
+  }));
+  const maxStd = Math.max(...stds.map(s => s.std));
+  const amplification = (maxStd / Math.max(customerStd, 0.01)).toFixed(2);
+
+  let lessonHTML = '';
+
+  lessonHTML += `<div class="tutorial-step">
+    <strong>📊 채찍효과 측정:</strong>
+    고객 수요 변동성(표준편차)은 <strong>${customerStd.toFixed(2)}</strong>이지만,
+    상류로 갈수록 주문 변동성이 증가했습니다 →
+    ${stds.map(s => `<span class="pill" style="border-left:3px solid ${s.color}">${s.name}: ${s.std.toFixed(2)}</span>`).join(' ')}
+    <br>최대 증폭률: <strong style="color:var(--accent)">${amplification}배</strong>
+  </div>`;
+
+  if (amplification > 2) {
+    lessonHTML += `<div class="tutorial-step">
+      <strong>⚠️ 강한 채찍효과 발생:</strong>
+      주문 변동이 ${amplification}배 증폭됐습니다. 이는 실제 산업에서도 흔히 나타나는 현상입니다.
+      <br><strong>주요 원인:</strong> ① 정보 격리, ② 주문/배송 지연, ③ 과잉반응(panic ordering),
+      ④ 안전재고 누적
+    </div>`;
+  } else {
+    lessonHTML += `<div class="tutorial-step">
+      <strong>👍 채찍효과 억제 성공:</strong>
+      증폭률이 비교적 낮습니다. 이는 ① 안정적 주문 정책, ② 정보 공유,
+      ③ 적절한 안전재고 유지로 가능합니다.
+    </div>`;
+  }
+
+  const total = ROLES.reduce((s, r) => s + state.roles[r.id].totalCost, 0);
+  // 이상적 비용 추정: 모든 단계 평균 재고 4 단위, 백오더 0
+  const idealCost = 4 * config.holdCost * config.weeks * 4;
+  lessonHTML += `<div class="tutorial-step">
+    <strong>💰 비용 분석:</strong>
+    총 비용 <strong>$${total.toFixed(2)}</strong> (이상적 기준치: ~$${idealCost.toFixed(2)}).
+    ${total > idealCost * 2 ? '비용이 상당히 높습니다 — 더 안정적인 주문 정책이 필요합니다.' : '비교적 효율적인 운영입니다.'}
+  </div>`;
+
+  lessonHTML += `<div class="tutorial-step">
+    <strong>🎓 핵심 교훈:</strong>
+    <ul style="margin:8px 0 0 20px;color:var(--text)">
+      <li>각 단계가 자기 정보만 보고 결정하면 시스템 전체가 비효율적이 됩니다.</li>
+      <li>주문/배송 지연은 시스템 동학(dynamics)을 불안정하게 만듭니다.</li>
+      <li>해결책: ① POS 데이터 공유 (VMI, CPFR), ② 짧은 리드타임, ③ 일관된 주문 정책 (base-stock).</li>
+      <li>현실 적용: Walmart-P&G의 VMI 협력, Dell의 Build-to-Order, Zara의 Quick Response 시스템.</li>
+    </ul>
+  </div>`;
+
+  lessons.innerHTML = lessonHTML;
+}
+
+// ============================================================
+// 데이터 내보내기
+// ============================================================
+function exportData() {
+  let csv = 'Week,CustomerDemand';
+  ROLES.forEach(r => {
+    csv += `,${r.en}_Order,${r.en}_Inventory,${r.en}_Backlog,${r.en}_TotalCost,${r.en}_Shipped`;
+  });
+  csv += '\n';
+  state.history.forEach(h => {
+    let row = `${h.week},${h.customerDemand}`;
+    ROLES.forEach(r => {
+      const d = h.roles[r.id];
+      row += `,${d.order},${d.inventory},${d.backlog},${d.totalCost.toFixed(2)},${d.shipped}`;
+    });
+    csv += row + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'beer_game_results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function quitGame() {
+  if (confirm('게임을 중단하고 결과 화면으로 가시겠습니까?')) {
+    if (state.history.length > 0) {
+      showResults();
+    } else {
+      resetGame();
+    }
+  }
+}
+
+function resetGame() {
+  document.getElementById('screen-results').classList.add('hidden');
+  document.getElementById('screen-game').classList.add('hidden');
+  document.getElementById('screen-setup').classList.remove('hidden');
+  if (charts.orders) Object.values(charts).forEach(c => c.destroy());
+  if (resultCharts.orders) Object.values(resultCharts).forEach(c => c.destroy());
+  charts = {};
+  resultCharts = {};
+  state = {};
+}
+
+// ============================================================
+// 시작
+// ============================================================
+initSetup();
+</script>
+</body>
+</html>

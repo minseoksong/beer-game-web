@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.vite
+**/.env
+**/data.json
+**/data.json.tmp
+**/data.db
+**/*.log
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+**/scripts/*_test.js
