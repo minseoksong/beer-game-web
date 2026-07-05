@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG = {
   holdCost: 0.5,
   backCost: 1.0,
   demand: 'step',           // 수요 패턴 — DEMAND_PATTERNS 참고
-  info: 'full',             // 'full' | 'partial' | 'open'
+  info: 'partial',          // 'full' | 'partial' | 'open' — 기본값: 내 단계만(타 플레이어 주문 비노출)
   aiPolicy: 'base_stock'    // 'base_stock' | 'naive' | 'conservative' | 'reactive'
 };
 
@@ -95,22 +95,22 @@ export const SCENARIO_PRESETS = {
   classic: {
     name: 'MIT 클래식', description: '원전 비어 게임 — 계단형 수요 + 표준 지연',
     config: { weeks: 36, orderDelay: 2, shipDelay: 2, startInv: 12,
-              holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'full', aiPolicy: 'base_stock' }
+              holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'partial', aiPolicy: 'base_stock' }
   },
   pandemic: {
     name: '팬데믹', description: '갑작스런 수요 폭증과 회복 — 채찍효과 극대화',
     config: { weeks: 24, orderDelay: 2, shipDelay: 2, startInv: 12,
-              holdCost: 0.5, backCost: 2.0, demand: 'pandemic_spike', info: 'full', aiPolicy: 'base_stock' }
+              holdCost: 0.5, backCost: 2.0, demand: 'pandemic_spike', info: 'partial', aiPolicy: 'base_stock' }
   },
   holiday: {
     name: '연말 성수기', description: '단기 성수기 대응 시뮬레이션',
     config: { weeks: 24, orderDelay: 1, shipDelay: 2, startInv: 12,
-              holdCost: 0.3, backCost: 2.0, demand: 'holiday', info: 'full', aiPolicy: 'base_stock' }
+              holdCost: 0.3, backCost: 2.0, demand: 'holiday', info: 'partial', aiPolicy: 'base_stock' }
   },
   stable: {
     name: '안정 환경', description: '단순 환경 — 초보 학생용',
     config: { weeks: 20, orderDelay: 1, shipDelay: 1, startInv: 8,
-              holdCost: 0.5, backCost: 1.0, demand: 'constant', info: 'open', aiPolicy: 'conservative' }
+              holdCost: 0.5, backCost: 1.0, demand: 'constant', info: 'partial', aiPolicy: 'conservative' }
   },
   chaos: {
     name: '카오스', description: '랜덤 수요 + 긴 지연 + reactive AI — 가장 어려움',

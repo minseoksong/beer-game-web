@@ -23,13 +23,13 @@ export const AI_POLICIES = [
 
 export const SCENARIO_PRESETS = [
   { value: 'classic',  label: 'MIT 클래식',
-    config: { weeks: 36, orderDelay: 2, shipDelay: 2, startInv: 12, holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'full', aiPolicy: 'base_stock' } },
+    config: { weeks: 36, orderDelay: 2, shipDelay: 2, startInv: 12, holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'partial', aiPolicy: 'base_stock' } },
   { value: 'pandemic', label: '팬데믹 — 채찍효과 극대화',
-    config: { weeks: 24, orderDelay: 2, shipDelay: 2, startInv: 12, holdCost: 0.5, backCost: 2.0, demand: 'pandemic_spike', info: 'full', aiPolicy: 'base_stock' } },
+    config: { weeks: 24, orderDelay: 2, shipDelay: 2, startInv: 12, holdCost: 0.5, backCost: 2.0, demand: 'pandemic_spike', info: 'partial', aiPolicy: 'base_stock' } },
   { value: 'holiday',  label: '연말 성수기',
-    config: { weeks: 24, orderDelay: 1, shipDelay: 2, startInv: 12, holdCost: 0.3, backCost: 2.0, demand: 'holiday', info: 'full', aiPolicy: 'base_stock' } },
+    config: { weeks: 24, orderDelay: 1, shipDelay: 2, startInv: 12, holdCost: 0.3, backCost: 2.0, demand: 'holiday', info: 'partial', aiPolicy: 'base_stock' } },
   { value: 'stable',   label: '안정 환경 (초보용)',
-    config: { weeks: 20, orderDelay: 1, shipDelay: 1, startInv: 8, holdCost: 0.5, backCost: 1.0, demand: 'constant', info: 'open', aiPolicy: 'conservative' } },
+    config: { weeks: 20, orderDelay: 1, shipDelay: 1, startInv: 8, holdCost: 0.5, backCost: 1.0, demand: 'constant', info: 'partial', aiPolicy: 'conservative' } },
   { value: 'chaos',    label: '카오스 (가장 어려움)',
     config: { weeks: 40, orderDelay: 3, shipDelay: 3, startInv: 12, holdCost: 0.5, backCost: 1.5, demand: 'random', info: 'partial', aiPolicy: 'reactive' } }
 ];

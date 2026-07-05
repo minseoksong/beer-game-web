@@ -5,7 +5,7 @@ import { DEMAND_PATTERNS, AI_POLICIES, SCENARIO_PRESETS } from '../lib/gameOptio
 
 const DEFAULT_CONFIG = {
   weeks: 36, orderDelay: 2, shipDelay: 2, startInv: 12,
-  holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'full', aiPolicy: 'base_stock'
+  holdCost: 0.5, backCost: 1.0, demand: 'step', info: 'partial', aiPolicy: 'base_stock'
 };
 
 export default function Admin() {
@@ -102,8 +102,8 @@ export default function Admin() {
             <label className="block text-sm text-[#8a96a8] mb-1">정보 격리 모드</label>
             <select value={config.info} onChange={e => setCfg('info', e.target.value)}
                     className="w-full bg-[#232f44] border border-[#2c3a52] rounded-md px-3 py-2">
-              <option value="full">완전 (인접 단계만 — MIT 정통)</option>
-              <option value="partial">부분 (자기 단계만)</option>
+              <option value="partial">부분 (자기 단계만 — 기본)</option>
+              <option value="full">완전 (인접 단계 공개 — MIT 정통)</option>
               <option value="open">개방 (모든 정보 공개)</option>
             </select>
           </div>
