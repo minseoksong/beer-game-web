@@ -63,7 +63,7 @@ export default function Play() {
     });
 
     s.on('order:submitted', (data) => {
-      setTeam(t => t ? { ...t, submitted: data.pendingOrders ? mapPending(data.pendingOrders) : t.submitted } : t);
+      setTeam(t => t ? { ...t, submitted: data.submitted || t.submitted } : t);
     });
 
     s.on('order:auto_filled', (data) => {
@@ -74,10 +74,6 @@ export default function Play() {
 
     return () => s.disconnect();
   }, [navigate]);
-
-  function mapPending(po) {
-    return ROLE_ORDER.reduce((acc, r) => { acc[r] = po[r] != null; return acc; }, {});
-  }
 
   function submitOrder(e) {
     e.preventDefault();
@@ -120,7 +116,9 @@ export default function Play() {
     ? myState.orderHistory[myState.orderHistory.length - 1]
     : '—';
   const myPending = team.submitted?.[myRole];
-  const totalCost = ROLE_ORDER.reduce((s, r) => s + team.state.roles[r].totalCost, 0);
+  // 팀 누적 비용은 서버가 합계로 제공 (역할별 내역은 정보 격리로 마스킹됨)
+  const totalCost = team.teamTotalCost
+    ?? ROLE_ORDER.reduce((s, r) => s + (team.state.roles[r]?.totalCost || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -270,11 +268,14 @@ function PipeDisplay({ label, items }) {
 
 function ChartsSection({ history, info, myRole }) {
   // info 모드에 따라 표시할 역할 필터링
-  const visibleRoles = info === 'partial'
+  const requested = info === 'partial'
     ? [myRole]
     : info === 'full'
       ? [myRole, downstreamOf(myRole), upstreamOf(myRole)].filter(Boolean)
       : ROLE_ORDER;
+  // 서버가 마스킹하므로 history에 실제로 존재하는 역할만 차트에 사용
+  const present = history[0]?.roles || {};
+  const visibleRoles = requested.filter(r => present[r]);
 
   const labels = history.map(h => `W${h.week}`);
   const datasets = (key) => visibleRoles.map(role => ({

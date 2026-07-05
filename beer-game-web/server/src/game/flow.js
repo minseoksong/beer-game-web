@@ -3,7 +3,7 @@
 
 import { sessions, teams, players } from '../db.js';
 import { generateId, generatePlayerToken } from '../util/code.js';
-import { ROLE_IDS } from './config.js';
+import { ROLE_IDS, downstreamOf, upstreamOf } from './config.js';
 import { simulateWeek, isFinished } from './engine.js';
 import { aiDecide } from './ai.js';
 import { summarizeTeam } from './stats.js';
@@ -11,6 +11,7 @@ import { summarizeTeam } from './stats.js';
 // 이벤트 송출 — index.js가 부팅 시 setEmitter로 io 인스턴스를 주입
 let emitter = {
   toTeam: (_teamId, _event, _payload) => {},
+  toTeamRole: (_teamId, _role, _event, _payload) => {},
   toAdmin: (_sessionId, _event, _payload) => {}
 };
 export function setEmitter(e) { emitter = e; }
@@ -112,9 +113,13 @@ export function submitOrder(teamId, role, qty) {
   if (allSubmitted) {
     advanceTeam(teamId);
   } else {
+    // 다른 사람의 실제 주문값은 노출하지 않음 — 제출 여부(boolean)만 전송
     emitter.toTeam(teamId, 'order:submitted', {
       role,
-      pendingOrders: team.pendingOrders
+      submitted: ROLE_IDS.reduce((acc, r) => {
+        acc[r] = team.pendingOrders[r] != null;
+        return acc;
+      }, {})
     });
   }
 }
@@ -189,11 +194,15 @@ function advanceTeam(teamId) {
     lastAdvanceAt: Date.now()
   });
 
-  emitter.toTeam(teamId, 'week:advanced', {
-    week: snapshot.week,
-    snapshot,
-    teamState: serializeTeamState(team)
-  });
+  // 역할별로 마스킹된 스냅샷/상태를 각 역할 룸에 개별 전송
+  for (const role of ROLE_IDS) {
+    const visible = visibleRolesFor(role, config.info || 'partial');
+    emitter.toTeamRole(teamId, role, 'week:advanced', {
+      week: snapshot.week,
+      snapshot: maskSnapshot(snapshot, visible),
+      teamState: serializeTeamState(team, role)
+    });
+  }
   emitter.toAdmin(session.id, 'team:event', {
     teamId,
     week: team.currentWeek,
@@ -223,15 +232,70 @@ function advanceTeam(teamId) {
   }
 }
 
-// 직렬화 (소켓으로 보내기 좋게 — pendingOrders는 본인 외엔 마스킹) -------
-export function serializeTeamState(team) {
+// 정보 격리 — 뷰어(viewerRole)가 볼 수 있는 역할 집합.
+// 클라이언트 ChartsSection의 visibleRoles 로직과 일치해야 함.
+//   partial: 자기 단계만 / full: 인접 단계 / open: 전체
+export function visibleRolesFor(viewerRole, info) {
+  if (info === 'open') return [...ROLE_IDS];
+  if (info === 'full') {
+    return [viewerRole, downstreamOf(viewerRole), upstreamOf(viewerRole)].filter(Boolean);
+  }
+  return [viewerRole]; // partial (기본)
+}
+
+function pickRoles(rolesObj, visible) {
+  return visible.reduce((acc, r) => {
+    if (rolesObj[r] != null) acc[r] = rolesObj[r];
+    return acc;
+  }, {});
+}
+
+// 고객 수요는 소매상만 관측 가능 — 소매상이 visible에 포함될 때만 노출
+function maskState(state, visible) {
+  return {
+    week: state.week,
+    customerDemandHistory: visible.includes('retailer') ? state.customerDemandHistory : [],
+    roles: pickRoles(state.roles, visible)
+  };
+}
+
+function maskHistory(history, visible) {
+  return history.map(h => ({
+    week: h.week,
+    customerDemand: visible.includes('retailer') ? h.customerDemand : null,
+    roles: pickRoles(h.roles, visible)
+  }));
+}
+
+export function maskSnapshot(snapshot, visible) {
+  return {
+    week: snapshot.week,
+    customerDemand: visible.includes('retailer') ? snapshot.customerDemand : null,
+    roles: pickRoles(snapshot.roles, visible)
+  };
+}
+
+// 직렬화 (소켓으로 보내기 좋게). viewerRole이 주어지고 게임이 진행 중이면
+// 세션의 info 모드에 맞춰 다른 역할의 state/history를 서버에서 마스킹한다.
+// 게임 종료 후(isFinished) 또는 viewerRole이 없으면(관리자 등) 전체 공개.
+export function serializeTeamState(team, viewerRole = null) {
+  const finished = !!team.isFinished;
+  let visible = [...ROLE_IDS];
+  if (!finished && viewerRole) {
+    const session = sessions.findById(team.sessionId);
+    const info = session?.config?.info || 'partial';
+    visible = visibleRolesFor(viewerRole, info);
+  }
+  const maskingOn = !finished && viewerRole;
   return {
     teamId: team.id,
     name: team.name,
     currentWeek: team.currentWeek,
-    isFinished: !!team.isFinished,
-    state: team.state,
-    history: team.history,
+    isFinished: finished,
+    // 팀 누적 비용은 팀 공동 점수이므로 항상 합계만 제공 (역할별 내역은 마스킹 대상)
+    teamTotalCost: ROLE_IDS.reduce((s, r) => s + team.state.roles[r].totalCost, 0),
+    state: maskingOn ? maskState(team.state, visible) : team.state,
+    history: maskingOn ? maskHistory(team.history, visible) : team.history,
     submitted: ROLE_IDS.reduce((acc, r) => {
       acc[r] = team.pendingOrders[r] != null;
       return acc;

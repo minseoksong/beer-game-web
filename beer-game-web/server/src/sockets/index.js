@@ -48,6 +48,8 @@ export function attachSockets(httpServer) {
   // flow.js에 emit 함수 주입
   setEmitter({
     toTeam: (teamId, event, payload) => io.to(`team:${teamId}`).emit(event, payload),
+    toTeamRole: (teamId, role, event, payload) =>
+      io.to(`team:${teamId}:${role}`).emit(event, payload),
     toAdmin: (sessionId, event, payload) => io.to(`admin:${sessionId}`).emit(event, payload)
   });
 
@@ -59,12 +61,14 @@ function handlePlayer(_io, socket) {
   const { team, session, player } = socket.data;
 
   socket.join(`team:${team.id}`);
+  // 역할별 마스킹 브로드캐스트 수신용 룸
+  socket.join(`team:${team.id}:${player.role}`);
 
-  // 초기 상태 푸시
+  // 초기 상태 푸시 — 본인 역할 기준으로 마스킹
   socket.emit('state:full', {
     me: { role: player.role, name: player.displayName, isAi: !!player.isAi },
     session: { id: session.id, code: session.code, status: session.status, config: session.config },
-    team: serializeTeamState(team),
+    team: serializeTeamState(team, player.role),
     teammates: getTeammates(team.id)
   });
 
